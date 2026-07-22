@@ -1,4 +1,4 @@
-*! tabsvy.ado v1.1  21jul2026  Andres Talavera Cuya - INEI / DNCE
+*! tabsvy.ado v1.3  22jul2026  Andres Talavera Cuya - INEI / DNCE
 *
 *  Motor generico de estimacion con encuestas complejas.
 *  Generaliza el bloque que se repite, cuadro tras cuadro, en cualquier
@@ -11,6 +11,17 @@
 *          -> se acumula en un frame
 *      }
 *
+*  v1.3: years() ya NO asume que ANIO_ va 1..k sin huecos. tabsvy ahora lee
+*  con levelsof que codigos tiene REALMENTE ANIO_ en los datos actuales, los
+*  ordena ascendente, y los mapea uno a uno contra years() (que debe traer
+*  la misma cantidad de anios, en orden cronologico). Esto es lo que
+*  soluciona el caso de variables que faltan en algun anio de la ronda
+*  global (ej. 2014 o 2020): ya no hay que averiguar "el codigo real es
+*  2,3,4,5,6,8"; alcanza con pasar los anios reales de ESTA base, en orden.
+*  Si la cantidad de anios en years() no calza con la cantidad de codigos
+*  distintos que trae ANIO_, tabsvy se detiene con un mensaje claro (en vez
+*  de desalinear silenciosamente los anios).
+*
 *  v1.1: agrega expectcats() para declarar "de arranque" que categorias
 *  debe tener VARNAME (ej. 1 2 para una dicotomica). Si la codificacion real
 *  no calza, tabsvy se detiene ahi mismo en vez de seguir y exportar mal
@@ -21,6 +32,14 @@
 *
 *      tabsvy, estcmd("svy linear: proportion indicador if omision1==0") ///
 *          varname(indicador) years(2014 2015 2016 2017 2018 2019 2020 2022)  ///
+*          expectcats(1 2) frame(F1) replace
+*
+*  USO CUANDO A LA VARIABLE LE FALTAN ANIOS DE LA RONDA GLOBAL (ej. no se
+*  pregunto en 2014 ni en 2020): simplemente pasa los anios que SI tiene
+*  esta base, en orden cronologico -- tabsvy detecta el resto solo:
+*
+*      tabsvy, estcmd("svy linear: proportion indicador") ///
+*          varname(indicador) years(2015 2016 2017 2018 2019 2022) ///
 *          expectcats(1 2) frame(F1) replace
 *
 *  USO CON DIMENSION SEXO (agrega sexo al over() y a las columnas de salida):
@@ -84,6 +103,28 @@ program define tabsvy
     local nyears : word count `years'
 
     * ---------------------------------------------------------------
+    * 1b. Detecta los codigos REALES de ANIO_ presentes en los datos
+    *     actuales (en vez de asumir que van 1..n sin huecos). Esto es
+    *     lo que permite que years() sea simplemente la lista de anios
+    *     reales de esta base, en orden cronologico, sin que el usuario
+    *     tenga que saber si ANIO_ salta algun codigo (ej. porque a esta
+    *     variable puntual le faltan 2014 o 2020 en la ronda global).
+    * ---------------------------------------------------------------
+    capture confirm variable ANIO_
+    if _rc {
+        di as error "tabsvy: no se encontro la variable ANIO_ en los datos actuales."
+        exit 111
+    }
+    quietly levelsof ANIO_, local(codigos_anio)
+    local ncodigos : word count `codigos_anio'
+    if `ncodigos' != `nyears' {
+        di as error "tabsvy: years() tiene `nyears' elemento(s) pero ANIO_ tiene `ncodigos' codigo(s) distinto(s) en los datos actuales (`codigos_anio')."
+        di as error "  Deben coincidir uno a uno: el codigo mas chico de ANIO_ -> el primer anio de years(), en orden cronologico."
+        di as error "  Revise con: tab ANIO_, nolabel"
+        exit 198
+    }
+
+    * ---------------------------------------------------------------
     * 2. Un svy + parmby por cada nivel de agregacion (NACIONAL/REGION/...)
     * ---------------------------------------------------------------
     foreach a of local caida {
@@ -106,11 +147,14 @@ program define tabsvy
                 exit 498
             }
 
-            * --- ANIO segun la posicion que ocupa en ANIO_ (1..k) ---
+            * --- ANIO segun el codigo REAL que ocupa en ANIO_, no la
+            *     posicion asumida 1..k. codigos_anio ya viene ordenado
+            *     ascendente (levelsof), igual que years() debe estar. ---
             gen ANIO = .
             forvalues yy = 1/`nyears' {
+                local code : word `yy' of `codigos_anio'
                 local yval : word `yy' of `years'
-                replace ANIO = `yval' if regexm(parm, "`yy'\.ANIO_")
+                replace ANIO = `yval' if regexm(parm, "`code'\.ANIO_")
             }
             assert !missing(ANIO)
 
