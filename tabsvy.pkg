@@ -1,0 +1,24 @@
+v 3
+d 'TABSVY': module to estimate and export complex-survey indicators to Excel templates
+d
+d  tabsvy estima proporciones/medias/ratios con diseno muestral complejo
+d  (svy + parmby) por niveles de agregacion (Nacional/Region/Departamento,
+d  con dimension sexo opcional, o loops de multiples variables), y acumula
+d  el resultado en un frame de Stata.
+d
+d  tabsvyexport toma ese frame, hace el reshape wide por anio, ordena las
+d  filas segun un orden de categorias declarado explicitamente (catorder),
+d  y exporta a una plantilla Excel en las celdas indicadas por nivel.
+d
+d  Pensado para cuadros de indicadores estadisticos repetitivos, propios
+d  de encuestas o registros administrativos periodicos.
+d
+d Requires: Stata 17, parmby (SSC), frameappend (SSC)
+d
+d Author: Andres Talavera Cuya, INEI - Direccion Nacional de Censos y Encuestas
+d Support: email atalaveracuya@gmail.com
+d
+f tabsvy.ado
+f tabsvy.sthlp
+f tabsvyexport.ado
+f tabsvyexport.sthlp

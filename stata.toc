@@ -1,0 +1,7 @@
+v 3
+d tabsvy / tabsvyexport
+d Motor generico de estimacion con encuestas complejas (svy + parmby) y
+d exportacion a plantillas Excel, para cuadros de indicadores estadisticos
+d repetitivos.
+
+p tabsvy Motor generico de estimacion con encuestas complejas y exportacion a plantillas Excel
